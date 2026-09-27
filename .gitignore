@@ -1,0 +1,21 @@
+# Secrets and machine-local configuration
+.env
+.env.*
+console/settings.json
+
+# Dependencies
+node_modules/
+
+# Customer data, audit copies of assessments, imported cases - never commit
+training/real/
+training/assessments/
+
+# Generated or regenerable data, model files and run output
+training/data/
+training/jobs/
+training/out/
+training/reviews/
+test/out/
+test/*.log
+*.gguf
+*.log

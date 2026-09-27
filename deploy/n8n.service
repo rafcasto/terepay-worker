@@ -1,0 +1,20 @@
+[Unit]
+Description=n8n Workflow Automation (TerePay Credit Assessment)
+After=network-online.target ollama.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rafcasto
+WorkingDirectory=/home/rafcasto
+# n8n does NOT read a .env file by itself — systemd injects it here.
+EnvironmentFile=/home/rafcasto/credit-assessment-agent/.env
+Environment=PATH=/home/rafcasto/.nvm/versions/node/v24.21.0/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/home/rafcasto/.nvm/versions/node/v24.21.0/bin/n8n start
+Restart=always
+RestartSec=10
+# Long LLM runs: don't let systemd kill a mid-flight assessment on restart
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

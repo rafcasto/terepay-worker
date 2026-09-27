@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>TerePay Trainer Console</title><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1c2430;--mut:#66707d;--line:#e3e6ea;--acc:#0b6b5c;--warn:#b7791f;--bad:#b42318;--good:#1f7a4d}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--bg)}
+header{background:#102a43;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:16px}header h1{font-size:16px;margin:0;font-weight:600}header .sub{color:#b8c4d3;font-size:12px}
+nav{display:flex;gap:2px;background:#1b3a5b;padding:0 20px}nav button{background:none;border:0;color:#cfe0f3;padding:10px 14px;cursor:pointer;font-size:13px;border-bottom:3px solid transparent}nav button.on{color:#fff;border-color:#4fd1c5}
+main{padding:18px 20px;max-width:1400px;margin:0 auto}section{display:none}section.on{display:block}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:14px}.row{display:flex;gap:14px;flex-wrap:wrap}.row>.card{flex:1 1 380px}
+h2{font-size:15px;margin:0 0 10px}h3{font-size:13px;margin:12px 0 6px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+label{display:block;font-size:12px;color:var(--mut);margin:8px 0 3px}input,select,textarea{width:100%;padding:7px 9px;border:1px solid var(--line);border-radius:6px;font:inherit;background:#fff}textarea{min-height:90px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
+button.btn{background:var(--acc);color:#fff;border:0;padding:8px 14px;border-radius:6px;cursor:pointer;font:inherit}button.btn.sec{background:#e9edf1;color:var(--ink)}button.btn.warn{background:var(--warn)}button.btn.bad{background:var(--bad)}button.btn:disabled{opacity:.5;cursor:default}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{color:var(--mut);font-weight:600;font-size:12px}tr.click{cursor:pointer}tr.click:hover{background:#f1f5f9}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;background:#eef2f6}.pill.Low{background:#dcf5e7;color:var(--good)}.pill.Medium{background:#fdf1d6;color:var(--warn)}.pill.High{background:#fde2df;color:var(--bad)}.pill.ok{background:#dcf5e7;color:var(--good)}.pill.warn{background:#fdf1d6;color:var(--warn)}.pill.bad{background:#fde2df;color:var(--bad)}
+pre{background:#0f172a;color:#d7e3f4;padding:10px;border-radius:6px;font-size:12px;overflow:auto;max-height:420px;white-space:pre-wrap}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:3px 14px;font-size:13px}.kv b{color:var(--mut);font-weight:500}
+.muted{color:var(--mut)}.small{font-size:12px}.hint{font-size:12px;color:var(--mut);margin-top:4px}
+.stat{display:inline-block;margin:0 18px 6px 0}.stat .n{font-size:22px;font-weight:600}.stat .l{font-size:12px;color:var(--mut)}
+ul.hits{margin:4px 0;padding-left:18px}ul.hits li{margin:2px 0}
+</style></head><body>
+<header><h1>TerePay Trainer Console</h1><span class="sub">real cases → parser check → backtest → labels → dataset → fine‑tune → exam</span></header>
+<nav><button data-t="statements" class="on">1 · Cases</button><button data-t="gold">2 · Gold review</button><button data-t="dataset">3 · Dataset</button><button data-t="finetune">4 · Fine‑tune</button><button data-t="exam">5 · Exam</button><button data-t="backtest">Backtest</button><button data-t="jobs">Jobs</button></nav>
+<main>
+
+<section id="statements" class="on">
+<div class="row">
+<div class="card" style="flex:0 1 440px">
+<h2>Upload one case</h2>
+<p class="hint">Bank statements (all accounts, all months), payslips and any prior‑loan note. PDF or text. Nothing leaves this Pi.</p>
+<form id="upForm">
+<label>Bank statements (PDF/TXT/CSV, several allowed) *</label><input type="file" name="file" required multiple accept=".pdf,.txt,.csv">
+<label>Payslips (PDF/TXT, several allowed)</label><input type="file" name="payslips" multiple accept=".pdf,.txt">
+<label>Credit history / prior‑loan note (PDF/TXT)</label><input type="file" name="history" multiple accept=".pdf,.txt">
+<div class="grid"><div><label>Application ID (re‑upload replaces)</label><input name="application_id" placeholder="e.g. LN-2024-0017"></div><div><label>Label (if no ID)</label><input name="label" placeholder="e.g. anz-customer-014"></div></div>
+<div class="grid">
+<div><label>Applicant</label><input name="applicant_name" placeholder="optional"></div>
+<div><label>Loan amount $</label><input name="loan_amount" type="number" step="1"></div>
+<div><label>Interest % p.a.</label><input name="interest_rate" type="number" step="0.01"></div>
+<div><label>Declared income $/mo</label><input name="income" type="number" step="1"></div>
+<div><label>Declared expenses $/mo</label><input name="expenses" type="number" step="1"></div>
+<div><label>Existing debt $</label><input name="existing_debt" type="number" step="1"></div>
+</div>
+<label>Loan purpose</label><input name="loan_purpose" placeholder="e.g. hospital bill, car repairs">
+<h3>Historical outcome (if known)</h3>
+<div class="grid">
+<div><label>TerePay decision</label><select name="decision_made"><option value="">unknown</option><option value="approved">approved</option><option value="conditional">conditional</option><option value="declined">declined</option></select></div>
+<div><label>What happened</label><select name="outcome"><option value="">unknown</option><option value="repaid">repaid on time</option><option value="repaid_late">repaid, some late</option><option value="arrears">in arrears</option><option value="default">defaulted</option><option value="written_off">written off</option><option value="current">still current</option><option value="declined">declined (not funded)</option></select></div>
+<div><label>Max days late</label><input name="max_days_late" type="number" step="1"></div>
+<div><label>Application date</label><input name="application_date" type="date"></div>
+</div>
+<label>Outcome notes</label><input name="outcome_notes" placeholder="e.g. stopped responding after 3rd instalment">
+<div style="margin-top:10px"><button class="btn" type="submit">Upload & analyse</button> <span id="upStatus" class="muted small"></span></div>
+</form>
+</div>
+<div class="card" style="flex:1 1 380px">
+<h2>Batch import (historical applications)</h2>
+<p class="hint">One ZIP: a folder per application named with its ID, containing that applicant's statements, payslips and history notes, plus an <code>applications.csv</code> at the top with declared figures and outcomes. <a href="/api/batch/template.csv">Download the CSV template</a>. Existing cases with the same ID are replaced.</p>
+<form id="batchForm"><input type="file" name="zip" accept=".zip" required><div style="margin-top:8px"><button class="btn" type="submit">Import ZIP</button> <span id="batchMsg" class="small muted"></span></div></form>
+<pre id="batchOut" style="display:none;max-height:260px"></pre>
+<h3>Or attach outcomes to cases already uploaded</h3>
+<form id="csvForm"><input type="file" name="csv" accept=".csv" required><div style="margin-top:8px"><button class="btn sec" type="submit">Apply CSV</button> <span id="csvMsg" class="small muted"></span></div></form>
+</div>
+</div>
+<div class="card"><h2>Cases</h2><table id="stTable"><thead><tr><th>ID</th><th>Docs</th><th>Parsed</th><th>Income/mo</th><th>Payslip</th><th>Engine</th><th>TerePay</th><th>Outcome</th><th>Label</th></tr></thead><tbody></tbody></table><p class="hint">“Parsed” = transactions read vs dated lines in the text. If they differ a lot, the parser needs a pattern for this bank — send me the ID.</p></div>
+<div id="stDetail"></div>
+</section>
+
+<section id="backtest">
+<div class="card"><h2>Backtest — rules engine vs what actually happened</h2><p class="hint">Uses every case with a known outcome on a funded loan (repaid / late / arrears / default / written off). “Bad” = arrears, default or written off. The tier and trigger tables are the calibration evidence: a tier whose bad rate is not higher than the base rate is not earning its place; a trigger with n ≥ 10 and a bad rate well above base is doing real work.</p><div id="btStats" class="muted">…</div></div>
+<div class="row"><div class="card"><h3>By engine expense tier</h3><table id="btTier"><thead><tr><th>Tier</th><th>n</th><th>bad</th><th>bad rate</th><th>late</th></tr></thead><tbody></tbody></table></div>
+<div class="card"><h3>By engine recommendation</h3><table id="btRec"><thead><tr><th>Recommendation</th><th>n</th><th>bad</th><th>bad rate</th><th>late</th></tr></thead><tbody></tbody></table></div>
+<div class="card"><h3>By TerePay's actual decision</h3><table id="btDec"><thead><tr><th>Decision</th><th>n</th><th>bad</th><th>bad rate</th><th>late</th></tr></thead><tbody></tbody></table></div></div>
+<div class="row"><div class="card"><h3>Triggers by bad rate</h3><table id="btTrig"><thead><tr><th>Trigger</th><th>n</th><th>bad</th><th>bad rate</th></tr></thead><tbody></tbody></table></div>
+<div class="card"><h3>Misses</h3><div id="btMiss" class="small"></div></div></div>
+</section>
+
+<section id="gold">
+<div class="card"><h2>Review synthetic gold notes</h2><p class="hint">These are the answers the model will be trained to give. Approve if a credit officer would sign it, edit if the wording or a judgement is off, reject if the case is unrealistic. Rejected cases are excluded from training.</p>
+<div class="row" style="align-items:end"><div style="flex:0 0 200px"><label>Profile</label><select id="gProfile"><option value="">all</option></select></div><div style="flex:0 0 160px"><label>Status</label><select id="gStatus"><option value="">all</option><option>unreviewed</option><option>approved</option><option>edited</option><option>rejected</option></select></div><div style="flex:0 0 200px"><label>Officer initials</label><input id="gOfficer" placeholder="e.g. RC"></div><div id="gCounts" class="small muted" style="flex:1"></div></div>
+</div>
+<div class="row"><div class="card" style="flex:0 1 460px;max-height:640px;overflow:auto"><table id="gTable"><thead><tr><th>Case</th><th>Decision</th><th>Words</th><th>Status</th></tr></thead><tbody></tbody></table></div><div class="card" id="gDetail"><p class="muted">Select a case.</p></div></div>
+</section>
+
+<section id="dataset">
+<div class="row">
+<div class="card"><h2>Training dataset</h2><div id="dsStats" class="muted">…</div><p class="hint">Composition: synthetic gold (minus rejected, with edits applied) + every labelled real statement (weighted ×3). The 25 exam cases are always held out.</p><button class="btn" id="dsBuild">Build dataset</button> <span id="dsMsg" class="small muted"></span></div>
+<div class="card"><h2>Synthetic cases</h2><p class="hint">Regenerate a larger or different set (runs the generator, the parser regression and the gold builder; ~1–2 min on the Pi). Existing reviews stay attached by case id where ids match.</p><div class="grid"><div><label>Cases</label><input id="rgN" type="number" value="200"></div><div><label>Seed</label><input id="rgSeed" type="number" value="11"></div></div><div style="margin-top:10px"><button class="btn sec" id="rgBtn">Regenerate</button></div></div>
+</div>
+</section>
+
+<section id="finetune">
+<div class="row">
+<div class="card" style="flex:0 1 460px"><h2>GPU host</h2><p class="hint">The Pi cannot train (no GPU). Training runs on a machine with an NVIDIA card that this Pi can reach over SSH — a desktop, or a rented cloud GPU. The Pi syncs the dataset, runs the training script there, pulls the result back and installs it into Ollama here.</p>
+<label>Mode</label><select id="sMode"><option value="ssh">SSH to a GPU host</option><option value="local">This machine (only if it has an NVIDIA GPU)</option></select>
+<div id="sshFields">
+<div class="grid"><div><label>Host</label><input id="sHost" placeholder="gpu-box or 203.0.113.5"></div><div><label>User</label><input id="sUser" placeholder="ubuntu"></div></div>
+<label>SSH private key path on the Pi (blank = default key)</label><input id="sKey" placeholder="/home/rafcasto/.ssh/id_ed25519">
+<label>Remote working dir</label><input id="sDir" value="~/terepay-finetune">
+</div>
+<div class="grid"><div><label>Base model</label><select id="sBase"><option>unsloth/Llama-3.2-3B-Instruct</option><option>unsloth/Qwen2.5-1.5B-Instruct</option><option>unsloth/Llama-3.2-1B-Instruct</option><option>unsloth/Qwen2.5-3B-Instruct</option></select></div><div><label>Epochs</label><input id="sEpochs" type="number" step="0.5" value="2"></div></div>
+<label>Name in Ollama</label><input id="sName" value="terepay-analyst">
+<div style="margin-top:10px"><button class="btn sec" id="sSave">Save settings</button> <span id="sMsg" class="small muted"></span></div>
+</div>
+<div class="card"><h2>Run</h2><div id="ftPre" class="muted">…</div>
+<div style="margin-top:10px"><button class="btn" id="ftStart">Start fine‑tune</button> <span id="ftMsg" class="small muted"></span></div>
+<h3>Or import a GGUF trained elsewhere</h3><form id="ggForm"><input type="file" name="gguf" accept=".gguf" required><label>Name in Ollama</label><input name="name" value="terepay-analyst"><div style="margin-top:8px"><button class="btn sec" type="submit">Import into Ollama</button></div></form>
+<h3>Models available on the Pi</h3><table id="mTable"><tbody></tbody></table>
+</div></div>
+</section>
+
+<section id="exam">
+<div class="row">
+<div class="card" style="flex:0 1 420px"><h2>Run the exam</h2><p class="hint">Scores a model on the 25 held‑out gold cases using the production prompt. ~1–2 min per case on the Pi.</p>
+<label>Model</label><select id="exModel"></select><label>Prompt</label><select id="exPrompt"></select><label>Cases</label><input id="exN" type="number" value="12"><div style="margin-top:10px"><button class="btn" id="exRun">Run exam</button> <span id="exMsg" class="small muted"></span></div></div>
+<div class="card"><h2>Results</h2><table id="exTable"><thead><tr><th>Model</th><th>Cases</th><th>s/case</th><th>JSON ok</th><th>Judg P / R</th><th>Behav F1</th><th>Len ok</th><th>Coverage</th><th>Contra.</th><th>Invented #</th><th>Conclusion</th></tr></thead><tbody></tbody></table><p class="hint">Adopt a model only if it is at least as good on every quality column and faster. Then set <code>OLLAMA_MODEL</code> in <code>.env</code>.</p></div>
+</div>
+<div id="exDetail"></div>
+</section>
+
+<section id="jobs"><div class="card"><h2>Background jobs</h2><table id="jTable"><thead><tr><th>Started</th><th>Job</th><th>Status</th><th></th></tr></thead><tbody></tbody></table></div><div class="card"><h2>Log</h2><pre id="jLog">(select a job)</pre></div></section>
+</main>
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const api=async(u,o={})=>{const r=await fetch(u,Object.assign({headers:o.body&&!(o.body instanceof FormData)?{'Content-Type':'application/json'}:{}},o,{body:o.body&&!(o.body instanceof FormData)?JSON.stringify(o.body):o.body}));const t=await r.text();let j;try{j=JSON.parse(t)}catch(e){j={raw:t}}if(!r.ok)throw new Error(j.error||t);return j};
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pill=d=>{const r=String(d).split('/')[0];return `<span class="pill ${r}">${esc(d)}</span>`};
+$$('nav button').forEach(b=>b.onclick=()=>{$$('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');$$('section').forEach(s=>s.classList.remove('on'));$('#'+b.dataset.t).classList.add('on');({statements:loadStatements,gold:loadGold,dataset:loadDataset,finetune:loadFinetune,exam:loadExam,backtest:loadBacktest,jobs:loadJobs})[b.dataset.t]()});
+
+// ---- statements
+async function loadStatements(){const rows=await api('/api/statements');const docs=d=>Object.entries(d||{}).map(([k,v])=>`${v} ${({statement:'stmt',payslip:'payslip',history:'hist',other:'other'})[k]||k}`).join(' · ')||'–';const ps=v=>v?`<span class="pill ${v==='verified'?'ok':v==='mismatch'||v==='declared_overstated'?'bad':'warn'}">${esc(v.replace('_',' '))}</span>`:'<span class="muted">–</span>';const oc=v=>v&&v!=='unknown'?`<span class="pill ${['arrears','default','written_off'].includes(v)?'bad':v==='repaid'?'ok':''}">${esc(v.replace('_',' '))}</span>`:'<span class="muted">–</span>';
+$('#stTable tbody').innerHTML=rows.map(r=>`<tr class="click" data-id="${esc(r.id)}"><td>${esc(r.id)}</td><td class="small">${docs(r.docs)}</td><td>${r.transactions} / ${r.dated_lines} ${r.transactions<10?'<span class="pill bad">not parsed</span>':r.transactions<r.dated_lines*0.9?'<span class="pill warn">partial</span>':'<span class="pill ok">ok</span>'}</td><td>${r.income?'$'+Math.round(r.income).toLocaleString():'–'}</td><td>${ps(r.payslip)}</td><td>${pill(r.decision)}</td><td>${esc(r.decision_made||'–')}</td><td>${oc(r.outcome)}</td><td>${r.labelled?'<span class="pill ok">labelled</span>':'<span class="pill">no</span>'}</td></tr>`).join('')||'<tr><td colspan=9 class="muted">none yet</td></tr>';$$('#stTable tr.click').forEach(tr=>tr.onclick=()=>showStatement(tr.dataset.id))}
+$('#batchForm').onsubmit=async e=>{e.preventDefault();$('#batchMsg').textContent='importing… (a few seconds per case)';try{const r=await api('/api/batch',{method:'POST',body:new FormData(e.target)});$('#batchMsg').textContent=`${r.folders} folders · CSV ${r.csv?r.csv+' ('+r.csv_rows+' rows)':'none'} · `+Object.entries(r.counts).map(([k,v])=>`${k} ${v}`).join(', ');const out=$('#batchOut');out.style.display='';out.textContent=r.results.map(x=>`${x.id.padEnd(28)} ${x.status.padEnd(8)} ${x.status==='ok'?`${x.transactions} txns · ${x.decision} · payslip ${x.payslip||'–'} · outcome ${x.outcome}`:x.reason}`).join('\n');e.target.reset();loadStatements()}catch(err){$('#batchMsg').textContent='error: '+err.message}};
+$('#csvForm').onsubmit=async e=>{e.preventDefault();$('#csvMsg').textContent='applying…';try{const r=await api('/api/batch/outcomes',{method:'POST',body:new FormData(e.target)});$('#csvMsg').textContent=`${r.updated} of ${r.rows} rows applied`+(r.missing.length?` · no case for: ${r.missing.slice(0,8).join(', ')}${r.missing.length>8?'…':''}`:'');e.target.reset();loadStatements()}catch(err){$('#csvMsg').textContent='error: '+err.message}};
+$('#upForm').onsubmit=async e=>{e.preventDefault();$('#upStatus').textContent='analysing…';try{const r=await api('/api/statements',{method:'POST',body:new FormData(e.target)});$('#upStatus').textContent='done';e.target.reset();await loadStatements();showStatement(r.id)}catch(err){$('#upStatus').textContent='error: '+err.message}};
+const hitsHtml=h=>['immediate_decline','critical','high','moderate'].filter(k=>h[k]&&h[k].length).map(k=>`<div><b>${k.replace('_',' ')}</b><ul class="hits">${h[k].map(x=>`<li>${esc(x.rule)}${x.value!==true&&x.value!==undefined?` <span class="muted">(${esc(Array.isArray(x.value)?x.value.join(', '):typeof x.value==='object'?JSON.stringify(x.value):x.value)})</span>`:''}</li>`).join('')}</ul></div>`).join('')||'<span class="muted">no thresholds triggered</span>';
+async function showStatement(id){const d=await api('/api/statements/'+encodeURIComponent(id));const a=d.analysis,m=a.metrics,f=a.findings,app=d.application||{},lab=d.label||{};const money=v=>v==null?'–':'$'+Math.round(v).toLocaleString();
+$('#stDetail').innerHTML=`<div class="row">
+<div class="card"><h2>${esc(id)} ${pill(f.risk_rating+'/'+f.recommendation+'/'+f.expense_risk_tier)}</h2>
+<div class="kv"><b>Documents</b><span>${(a.documents||[]).map(d=>`<a href="/api/statements/${encodeURIComponent(id)}/doc/${encodeURIComponent(d.file)}" target="_blank">${esc(d.original)}</a> <span class="pill ${d.unreadable?'bad':''}">${d.kind}${d.kind==='statement'?' · '+d.transactions+' txns':''}${d.unreadable?' · unreadable':''}</span>`).join('<br>')||'<span class="muted">none</span>'}</span>
+<b>Parser</b><span>${a.parser.transactions} transactions from ${a.parser.dated_lines_in_text} dated lines · mode ${a.mode} · opening ${a.parser.opening_balance??'?'} ${a.parser.notes.length?'<br><span class="muted small">'+esc(a.parser.notes.slice(0,3).join(' | '))+'</span>':''}</span>
+${a.payslips?`<b>Payslips</b><span>${a.payslips.usable} of ${a.payslips.count} readable${a.payslips.employer?' · '+esc(a.payslips.employer):''} · net ${money(a.payslips.net_per_pay_median)} per ${esc(a.payslips.frequency||'pay')} = ${money(a.payslips.net_monthly)}/mo${a.payslips.gross_monthly?' (gross '+money(a.payslips.gross_monthly)+')':''} · ${a.payslips.matched_in_statement} matched in statement · vs statement ${a.payslips.vs_statement_pct??'–'}% · vs declared ${a.payslips.vs_declared_pct??'–'}% <span class="pill ${f.affordability.payslip_status==='verified'?'ok':f.affordability.payslip_status==='none'?'':'bad'}">${esc(f.affordability.payslip_status)}</span>${a.payslips.notes.length?'<br><span class="muted small">'+esc(a.payslips.notes.join(' | '))+'</span>':''}<br><span class="small">${a.payslips.slips.map(p=>`${esc(p.fileName)}: ${p.pay_date||p.period_end||'no date'} net ${money(p.net)} gross ${money(p.gross)} ${p.frequency||''}`).join('<br>')}</span></span>`:''}
+${m?`<b>Period</b><span>${m.period.start} → ${m.period.end} (${m.period.days} days)</span><b>Income</b><span>${money(m.income.observed_net_monthly)}/mo · ${m.income.cadence} · ${m.income.credits_count} credits [${esc(m.income.sources.join(', '))}]${m.income.income_drop_pct>10?` · <span class="pill warn">fell ${m.income.income_drop_pct}%</span>`:''}</span>
+<b>Balance</b><span>min ${money(m.cash_flow.min_balance)} · under $100 ${m.cash_flow.days_under_100_per_month} d/mo · under $50 ${m.cash_flow.days_under_50_per_month} d/mo · overdrawn events ${m.cash_flow.zero_balance_events_per_month}/mo · fees ${m.cash_flow.overdraft_or_dishonour_fees}</span>
+<b>BNPL</b><span>${m.bnpl.transaction_count} txns · ${money(m.bnpl.monthly_spend)}/mo (${m.bnpl.pct_of_income??'–'}%) · max ${m.bnpl.max_per_week}/wk [${esc(m.bnpl.providers.join(', '))}]</span>
+<b>Gambling</b><span>${m.gambling.any_activity?m.gambling.transaction_count+' txns · '+money(m.gambling.total_spend)+' ['+esc(m.gambling.operators.join(', '))+']':'none'}</span>
+<b>Remittances</b><span>${m.remittances.count} · ${money(m.remittances.monthly_total)}/mo (${m.remittances.pct_of_income??'–'}%) [${esc(m.remittances.destinations.join(', '))}]</span>
+<b>Credit</b><span>${m.credit.active_credit_facilities} facilities [${esc(m.credit.facilities.join(', '))}] · advances in ${m.credit.cash_advances_or_topups} · emergency transfers in ${m.credit.emergency_bailouts} (${m.credit.family_bailout_frequency})</span>
+<b>Medical</b><span>${m.medical&&m.medical.transaction_count?m.medical.transaction_count+' txns · '+money(m.medical.monthly)+'/mo ('+m.medical.pct_of_income+'%)':'none'}</span>`:'<b>Metrics</b><span class="muted">statement not parsed — fallback mode</span>'}
+<b>Behaviour</b><span>${f.behaviour_score} · ${esc(f.behaviour_tier)}</span><b>Escalation</b><span>${esc(f.escalation)}</span></div>
+<h3>Rule hits</h3>${hitsHtml(f.rule_hits)}
+<h3>Engine factors</h3><div class="small">${(f.factors||[]).map(x=>`<span class="pill ${x.impact==='Positive'?'ok':x.impact==='Negative'?'bad':''}">${esc(x.impact)}</span> <b>${esc(x.name)}</b> — ${esc(x.assessment)}`).join('<br>')||'<span class="muted">none</span>'}</div>
+<h3>Unclassified transactions (${a.unclassified.length}) — tell me if any of these are important merchants</h3><div class="small">${a.unclassified.slice(0,15).map(t=>`${t.date} ${esc(t.desc)} ${t.amount}`).join('<br>')||'<span class="muted">none</span>'}</div>
+<h3>Evidence lines</h3><div class="small">${a.evidence.slice(0,10).map(esc).join('<br>')}</div>
+<button class="btn bad" style="margin-top:12px" onclick="delStatement('${esc(id)}')">Delete</button></div>
+<div class="card"><h2>Application & label</h2>
+<div class="grid"><div><label>Loan amount $</label><input id="l_loan_amount" value="${esc(app.loan_amount??'')}"></div><div><label>Interest %</label><input id="l_interest_rate" value="${esc(app.interest_rate??'')}"></div><div><label>Income $/mo</label><input id="l_income" value="${esc(app.income??'')}"></div><div><label>Expenses $/mo</label><input id="l_expenses" value="${esc(app.expenses??'')}"></div><div><label>Existing debt $</label><input id="l_existing_debt" value="${esc(app.existing_debt??'')}"></div><div><label>Purpose</label><input id="l_loan_purpose" value="${esc(app.loan_purpose??'')}"></div></div>
+<div class="grid"><div><label>TerePay decision</label><select id="l_decision_made">${['','approved','conditional','declined'].map(v=>`<option value="${v}" ${(app.decision_made||'')===v?'selected':''}>${v||'unknown'}</option>`).join('')}</select></div><div><label>Outcome</label><select id="l_outcome">${['unknown','repaid','repaid_late','arrears','default','written_off','current','declined'].map(v=>`<option value="${v}" ${(app.outcome||'unknown')===v?'selected':''}>${v.replace('_',' ')}</option>`).join('')}</select></div><div><label>Max days late</label><input id="l_max_days_late" value="${esc(app.max_days_late??'')}"></div><div><label>Application date</label><input id="l_application_date" value="${esc(app.application_date??'')}"></div></div><label>Outcome notes</label><input id="l_outcome_notes" value="${esc(app.outcome_notes??'')}">
+<div style="margin-top:8px"><button class="btn sec" onclick="reanalyse('${esc(id)}')">Save & re‑analyse</button></div>
+<h3>Officer's judgement calls (leave blank = unknown)</h3><div class="grid">${['income_matches_declared','bnpl_used_for_essentials','bnpl_cycling','credit_paying_credit','remittances_crisis_driven','remittances_undisclosed_obligation','remittances_sent_while_bnpl_for_basics','undisclosed_dependents_suspected','paying_others_debts','luxury_while_bnpl_basics','luxury_on_low_income','transport_beyond_need','chaotic_spending','medical_expense_explained'].map(k=>`<div><label>${k.replace(/_/g,' ')}</label><select data-j="${k}"><option value="">unknown</option><option value="true" ${lab.judgements&&lab.judgements[k]===true?'selected':''}>true</option><option value="false" ${lab.judgements&&lab.judgements[k]===false?'selected':''}>false</option></select></div>`).join('')}</div>
+<h3>Behaviour scorecard (from history document / TerePay records)</h3><div class="grid">${['paid_previous_loan_early','paid_on_time_consistently','communicates_proactively','missed_payments_before','existing_defaults','write_off_history','requests_bigger_loan_too_fast','provides_multiple_excuses','avoids_communication'].map(k=>`<label style="display:flex;gap:6px;align-items:center;margin:2px 0"><input type="checkbox" data-b="${k}" ${lab.behaviour&&lab.behaviour.includes(k)?'checked':''} style="width:auto">${k.replace(/_/g,' ')}</label>`).join('')}</div>
+<label>Analyst note (40–80 words: explanation → affordability → conclusion; do not repeat the metrics)</label><textarea id="l_note">${esc(lab.analyst_note||'')}</textarea>
+<div class="grid"><div><label>Confidence 0–100</label><input id="l_conf" value="${esc(lab.confidence??70)}"></div><div><label>Officer initials</label><input id="l_officer" value="${esc(lab.officer||'')}"></div></div>
+<label>Data gaps (one per line)</label><textarea id="l_gaps" style="min-height:50px">${esc((lab.data_gaps||[]).join('\n'))}</textarea>
+<div style="margin-top:10px"><button class="btn" onclick="saveLabel('${esc(id)}')">Save label</button> <span id="lMsg" class="small muted"></span></div>
+<h3>What the model sees</h3><pre>${esc(a.brief||'(not parsed)')}</pre></div></div>`;window.scrollTo({top:$('#stDetail').offsetTop-10,behavior:'smooth'})}
+async function reanalyse(id){const body={};for(const k of ['loan_amount','interest_rate','income','expenses','existing_debt','loan_purpose','decision_made','outcome','max_days_late','application_date','outcome_notes'])body[k]=$('#l_'+k).value;await api('/api/statements/'+encodeURIComponent(id)+'/reanalyse',{method:'POST',body});await loadStatements();showStatement(id)}
+async function saveLabel(id){const judgements={};$$('[data-j]').forEach(s=>{if(s.value)judgements[s.dataset.j]=s.value==='true'});const behaviour=$$('[data-b]').filter(c=>c.checked).map(c=>c.dataset.b);const note=$('#l_note').value.trim();const w=note.split(/\s+/).filter(Boolean).length;if(w<25){$('#lMsg').textContent='note too short ('+w+' words)';return}await api('/api/statements/'+encodeURIComponent(id)+'/label',{method:'POST',body:{judgements,behaviour,analyst_note:note,confidence:$('#l_conf').value,officer:$('#l_officer').value,data_gaps:$('#l_gaps').value.split('\n').map(s=>s.trim()).filter(Boolean)}});$('#lMsg').textContent='saved';loadStatements()}
+async function delStatement(id){if(!confirm('Delete '+id+'?'))return;await api('/api/statements/'+encodeURIComponent(id),{method:'DELETE'});$('#stDetail').innerHTML='';loadStatements()}
+
+// ---- gold
+let gCur=null;
+async function loadGold(){const q=new URLSearchParams({profile:$('#gProfile').value,status:$('#gStatus').value});const d=await api('/api/gold?'+q);if($('#gProfile').options.length<=1)$('#gProfile').innerHTML='<option value="">all</option>'+d.profiles.map(p=>`<option>${p}</option>`).join('');$('#gCounts').textContent=Object.entries(d.counts).map(([k,v])=>`${k}: ${v}`).join(' · ')+` · showing ${d.rows.length} of ${d.total}`;$('#gTable tbody').innerHTML=d.rows.map(r=>`<tr class="click" data-id="${r.id}"><td>${esc(r.id)}</td><td>${pill(r.decision)}</td><td>${r.words}</td><td><span class="pill ${r.status==='approved'||r.status==='edited'?'ok':r.status==='rejected'?'bad':''}">${r.status}</span></td></tr>`).join('');$$('#gTable tr.click').forEach(tr=>tr.onclick=()=>showGold(tr.dataset.id))}
+$('#gProfile').onchange=$('#gStatus').onchange=loadGold;
+async function showGold(id){const d=await api('/api/gold/'+id);gCur=d;const g=(d.review&&d.review.gold)||d.case.gold;const brief=d.case.user.replace(/^VERIFIED METRICS AND STATEMENT LINES\n/,'').replace(/\n\nMake the judgement calls.*$/s,'');
+$('#gDetail').innerHTML=`<h2>${esc(id)} ${pill(d.case.decision)} ${d.review?`<span class="pill">${d.review.status} by ${esc(d.review.officer||'?')}</span>`:''}</h2>
+<h3>Triggered</h3><div class="small">${d.case.triggered.map(esc).join(' · ')||'<span class="muted">none</span>'}</div>
+<h3>Judgements</h3><textarea id="gJ" style="min-height:50px">${esc(JSON.stringify(g.judgements))}</textarea>
+<h3>Behaviour ticks</h3><input id="gB" value="${esc((g.behaviour||[]).join(', '))}">
+<h3>Analyst note</h3><textarea id="gNote" style="min-height:120px">${esc(g.analyst_note)}</textarea>
+<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="review('approved')">Approve</button><button class="btn warn" onclick="review('edited')">Save edits</button><button class="btn bad" onclick="review('rejected')">Reject</button><button class="btn sec" onclick="nextUnreviewed()">Next unreviewed →</button> <span id="gMsg" class="small muted"></span></div>
+<h3>Brief the model sees</h3><pre>${esc(brief)}</pre>`}
+async function review(status){let judgements;try{judgements=JSON.parse($('#gJ').value)}catch(e){$('#gMsg').textContent='judgements must be valid JSON';return}await api('/api/gold/'+gCur.case.id+'/review',{method:'POST',body:{status,judgements,behaviour:$('#gB').value.split(',').map(s=>s.trim()).filter(Boolean),analyst_note:$('#gNote').value,officer:$('#gOfficer').value}});$('#gMsg').textContent=status;await loadGold();if(status!=='edited')nextUnreviewed()}
+async function nextUnreviewed(){const d=await api('/api/gold?status=unreviewed&profile='+encodeURIComponent($('#gProfile').value));if(d.rows.length)showGold(d.rows[0].id);else $('#gMsg').textContent='all reviewed'}
+
+// ---- dataset
+async function loadDataset(){const d=await api('/api/dataset');$('#dsStats').innerHTML=(d.stats?`<div class="stat"><div class="n">${d.stats.examples}</div><div class="l">training examples</div></div><div class="stat"><div class="n">${d.stats.synthetic}</div><div class="l">synthetic (${d.stats.edited} edited, ${d.stats.rejected} rejected)</div></div><div class="stat"><div class="n">${d.stats.real_labelled}</div><div class="l">real labelled (×3)</div></div><div class="stat"><div class="n">${d.stats.exam_cases}</div><div class="l">exam held out</div></div><div class="small muted">built ${d.stats.built_at}</div>`:'<span class="muted">not built yet</span>')+`<div class="small" style="margin-top:8px">${d.reviews} reviews saved · ${d.real} real statements labelled · gold ${d.has_exam?'present':'missing'}</div>`}
+$('#dsBuild').onclick=async()=>{$('#dsMsg').textContent='building…';const s=await api('/api/dataset/build',{method:'POST'});$('#dsMsg').textContent=`built ${s.examples} examples`;loadDataset()};
+$('#rgBtn').onclick=async()=>{const j=await api('/api/synthetic/regenerate',{method:'POST',body:{n:$('#rgN').value,seed:$('#rgSeed').value}});alert('Regeneration started — see Jobs tab ('+j.id+')')};
+
+// ---- finetune
+async function loadFinetune(){const s=await api('/api/settings');$('#sMode').value=s.gpu_mode||'ssh';$('#sHost').value=s.ssh_host||'';$('#sUser').value=s.ssh_user||'';$('#sKey').value=s.ssh_key||'';$('#sDir').value=s.remote_dir||'~/terepay-finetune';$('#sBase').value=s.base_model||'unsloth/Llama-3.2-3B-Instruct';$('#sEpochs').value=s.epochs||2;$('#sName').value=s.ollama_name||'terepay-analyst';$('#sshFields').style.display=$('#sMode').value==='ssh'?'':'none';
+const d=await api('/api/dataset');$('#ftPre').innerHTML=`<div class="kv"><b>Dataset</b><span>${d.stats?d.stats.examples+' examples (built '+d.stats.built_at.slice(0,16)+')':'<span class="pill bad">not built</span>'}</span><b>GPU</b><span>${s.gpu_mode==='local'?(s.local_gpu?'<span class="pill ok">local NVIDIA GPU</span>':'<span class="pill bad">no NVIDIA GPU on this Pi — use SSH mode</span>'):(s.ssh_host?`SSH → ${esc(s.ssh_user)}@${esc(s.ssh_host)}`:'<span class="pill bad">no SSH host configured</span>')}</span><b>Base</b><span>${esc(s.base_model)} · ${s.epochs} epochs → <code>${esc(s.ollama_name)}</code></span></div><p class="hint">Typical run: 30–60 min on an 8 GB+ GPU. Steps: check GPU → sync dataset → install deps (first time) → train → pull GGUF → <code>ollama create</code> on the Pi. Follow progress in Jobs.</p>`;
+const ms=await api('/api/models');$('#mTable tbody').innerHTML=ms.map(m=>`<tr><td>${esc(m.name)}</td><td>${m.size_gb} GB</td><td class="muted small">${esc(m.modified.slice(0,16))}</td></tr>`).join('')}
+$('#sMode').onchange=()=>$('#sshFields').style.display=$('#sMode').value==='ssh'?'':'none';
+$('#sSave').onclick=async()=>{await api('/api/settings',{method:'POST',body:{gpu_mode:$('#sMode').value,ssh_host:$('#sHost').value,ssh_user:$('#sUser').value,ssh_key:$('#sKey').value,remote_dir:$('#sDir').value,base_model:$('#sBase').value,epochs:Number($('#sEpochs').value),ollama_name:$('#sName').value}});$('#sMsg').textContent='saved';loadFinetune()};
+$('#ftStart').onclick=async()=>{try{const j=await api('/api/jobs/finetune',{method:'POST',body:{out_name:$('#sName').value}});$('#ftMsg').textContent='started '+j.id+' — see Jobs';}catch(e){$('#ftMsg').textContent=e.message}};
+$('#ggForm').onsubmit=async e=>{e.preventDefault();const j=await api('/api/models/import',{method:'POST',body:new FormData(e.target)});alert('Import started — see Jobs ('+j.id+')')};
+
+// ---- exam
+async function loadExam(){const [ms,ps,rows]=await Promise.all([api('/api/models'),api('/api/prompts'),api('/api/exams')]);$('#exModel').innerHTML=ms.filter(m=>!/embed/.test(m.name)).map(m=>`<option>${esc(m.name)}</option>`).join('');$('#exPrompt').innerHTML=ps.map(p=>`<option value="${p}" ${p==='credit-assessment-judgement.md'?'selected':''}>${p}</option>`).join('');const f=v=>v==null?'–':(v*100).toFixed(0)+'%';$('#exTable tbody').innerHTML=rows.map(r=>`<tr class="click" data-f="${esc(r.file)}"><td>${esc(r.file.replace(/^exam-|\.json$/g,''))}</td><td>${r.cases}</td><td>${r.avg_secs}</td><td>${f(r.json_valid)}</td><td>${f(r.judgement_precision)} / ${f(r.judgement_recall)}</td><td>${r.behaviour_f1==null?'–':r.behaviour_f1.toFixed(2)}</td><td>${f(r.note_length_ok)}</td><td>${f(r.finding_coverage)}</td><td>${f(r.contradictions)}</td><td>${f(r.invented_numbers)}</td><td>${f(r.conclusion_consistent)}</td></tr>`).join('')||'<tr><td colspan=11 class="muted">no exams yet</td></tr>';$$('#exTable tr.click').forEach(tr=>tr.onclick=async()=>{const d=await api('/api/exams/'+tr.dataset.f);$('#exDetail').innerHTML='<div class="card"><h2>'+esc(tr.dataset.f)+'</h2>'+d.results.map(x=>`<div style="margin-bottom:10px"><b>${esc(x.id)}</b> ${pill(x.decision)} <span class="muted small">${x.secs}s · ${x.words} words · cover ${x.coverage}${x.contradiction?' · <span class="pill bad">contradiction</span>':''}${x.conclusionOk?'':' · <span class="pill warn">conclusion?</span>'}</span><div class="small">${esc(x.note)}</div></div>`).join('')+'</div>'})}
+$('#exRun').onclick=async()=>{const j=await api('/api/jobs/exam',{method:'POST',body:{model:$('#exModel').value,n:Number($('#exN').value),system:$('#exPrompt').value}});$('#exMsg').textContent='started — see Jobs ('+j.id+')'};
+
+// ---- backtest
+async function loadBacktest(){const d=await api('/api/backtest');const rate=v=>v==null?'–':v+'%';const rows=(m,order)=>Object.entries(m).sort((a,b)=>(order.indexOf(a[0])+1||99)-(order.indexOf(b[0])+1||99)).map(([k,v])=>`<tr><td>${esc(k||'?')}</td><td>${v.n}</td><td>${v.bad}</td><td><b>${rate(v.bad_rate)}</b></td><td>${v.repaid_late}</td></tr>`).join('')||'<tr><td colspan=5 class="muted">no data</td></tr>';
+$('#btStats').innerHTML=`<div class="stat"><div class="n">${d.total}</div><div class="l">cases</div></div><div class="stat"><div class="n">${d.with_outcome}</div><div class="l">funded with known outcome</div></div><div class="stat"><div class="n">${rate(d.base_bad_rate)}</div><div class="l">base bad rate</div></div><div class="small muted" style="margin-top:6px">outcomes: ${Object.entries(d.outcomes).filter(([k,v])=>v).map(([k,v])=>`${k.replace('_',' ')} ${v}`).join(' · ')||'none recorded'}</div>`;
+$('#btTier tbody').innerHTML=rows(d.by_tier,['Lower','Moderate','High','Critical']);$('#btRec tbody').innerHTML=rows(d.by_recommendation,['Approve','Conditional','Deny']);$('#btDec tbody').innerHTML=rows(d.by_terepay_decision,['approved','conditional','declined']);
+$('#btTrig tbody').innerHTML=d.triggers.map(t=>`<tr><td class="small">${esc(t.trigger)}</td><td>${t.n}</td><td>${t.bad}</td><td><b>${rate(t.bad_rate)}</b>${d.base_bad_rate!=null&&t.n>=10&&t.bad_rate>=d.base_bad_rate*1.5?' <span class="pill ok">strong</span>':d.base_bad_rate!=null&&t.n>=10&&t.bad_rate<=d.base_bad_rate?' <span class="pill warn">not predictive</span>':''}</td></tr>`).join('')||'<tr><td colspan=4 class="muted">no data</td></tr>';
+const miss=x=>`<div><b>${esc(x.id)}</b> ${pill(x.risk+'/'+x.recommendation+'/'+x.tier)} → <b>${esc(x.outcome.replace('_',' '))}</b>${x.max_days_late!=null?' ('+x.max_days_late+' days late)':''}${x.purpose?' · '+esc(x.purpose):''}<div class="muted small">${esc(x.triggers.join(' · ')||'no triggers')}</div></div>`;
+$('#btMiss').innerHTML=`<h3>Engine would approve, loan went bad (${d.would_approve_but_bad.length})</h3>${d.would_approve_but_bad.map(miss).join('')||'<span class="muted">none</span>'}<h3>Engine would deny, loan repaid on time (${d.would_deny_but_repaid.length})</h3>${d.would_deny_but_repaid.map(miss).join('')||'<span class="muted">none</span>'}`}
+
+// ---- jobs
+let jCur=null;
+async function loadJobs(){const js=await api('/api/jobs');$('#jTable tbody').innerHTML=js.map(j=>`<tr class="click" data-id="${j.id}"><td class="small">${esc(j.started.slice(0,19).replace('T',' '))}</td><td>${esc(j.name)} <span class="muted small">${esc(j.cmd.slice(0,80))}</span></td><td><span class="pill ${j.status==='done'?'ok':j.status==='failed'?'bad':'warn'}">${j.status}</span></td><td>${j.status==='running'?`<button class="btn bad" onclick="event.stopPropagation();api('/api/jobs/${j.id}/kill',{method:'POST'}).then(loadJobs)">stop</button>`:''}</td></tr>`).join('')||'<tr><td colspan=4 class="muted">no jobs this session</td></tr>';$$('#jTable tr.click').forEach(tr=>tr.onclick=()=>{jCur=tr.dataset.id;tailLog()})}
+async function tailLog(){if(!jCur)return;const r=await fetch('/api/jobs/'+jCur+'/log');$('#jLog').textContent=await r.text()||'(empty)';$('#jLog').scrollTop=$('#jLog').scrollHeight}
+setInterval(()=>{if($('#jobs').classList.contains('on')){loadJobs();tailLog()}},4000);
+loadStatements();
+</script></body></html>

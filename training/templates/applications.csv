@@ -1,0 +1,4 @@
+application_id,applicant_name,application_date,loan_amount,interest_rate,income,expenses,existing_debt,loan_purpose,decision_made,decision_by,outcome,max_days_late,outcome_notes,behaviour_paid_previous_loan_early,behaviour_paid_on_time_consistently,behaviour_communicates_proactively,behaviour_missed_payments_before,behaviour_existing_defaults,behaviour_write_off_history,behaviour_requests_bigger_loan_too_fast,behaviour_provides_multiple_excuses,behaviour_avoids_communication
+LN-2024-0001,J Ratu,2024-03-14,1500,24.9,2788,2180,0,work tools,approved,RC,repaid,0,,,,,,,,,,
+LN-2024-0002,T Havili,2024-04-02,3000,29.95,4000,3100,1800,hospital bill,approved,RC,default,94,stopped responding after 3rd instalment,,,,true,,,,,true
+LN-2024-0003,S Tuilagi,2024-04-20,2000,24.9,3200,2600,400,car repairs,declined,RC,declined,,,,,,,,,,,

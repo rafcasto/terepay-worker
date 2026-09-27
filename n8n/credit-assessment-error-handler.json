@@ -1,0 +1,117 @@
+{
+  "name": "Credit Assessment - Error Handler",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "9573617a-b19e-4572-96de-8a5b93c1e9c2",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst e = $input.first().json || {};\nconst ex = e.execution || {};\nconst err = ex.error || (e.trigger && e.trigger.error) || {};\nreturn [{ json: {\n  application_id: null,\n  n8n_execution_id: ex.id ? String(ex.id) : null,\n  workflow_name: (e.workflow || {}).name || null,\n  error_step: ex.lastNodeExecuted || (err.node && err.node.name) || 'trigger',\n  error_message: String(err.message || 'Unknown error').slice(0, 4000),\n  error_stack: String(err.stack || '').slice(0, 20000),\n  execution_url: ex.url || null\n} }];\n"
+      },
+      "id": "d65d36f5-f687-431c-993f-a988d98fd4c8",
+      "name": "Build Error Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "list",
+          "value": "assessment_errors"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "a5fb0540-eaf4-49cc-80bc-f7c157d116a6",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        440,
+        300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.SMTP_USER }}",
+        "toEmail": "={{ $env.ERROR_ALERT_EMAIL }}",
+        "subject": "=[Credit Assessment] FAILED at {{ $json.error_step }} - execution {{ $json.n8n_execution_id }}",
+        "emailFormat": "text",
+        "text": "=Credit Assessment Processor failed.\n\nWorkflow: {{ $json.workflow_name }}\nStep: {{ $json.error_step }}\nExecution: {{ $json.n8n_execution_id }}\nWhen: {{ $now.setZone('Pacific/Auckland').toFormat('yyyy-LL-dd HH:mm:ss ZZZZ') }}\n\nError:\n{{ $json.error_message }}\n\nOpen the execution to see the application_id in the trigger data:\n{{ $json.execution_url }}\n\nStack:\n{{ $json.error_stack }}",
+        "options": {}
+      },
+      "id": "44a98872-b0c6-4209-b4d3-0fa786d0d398",
+      "name": "Email Loan Manager",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        660,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Build Error Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Error Record": {
+      "main": [
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error": {
+      "main": [
+        [
+          {
+            "node": "Email Loan Manager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Pacific/Auckland"
+  }
+}

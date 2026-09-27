@@ -1,0 +1,10 @@
+{
+  "id": "6f1c2c0e-4d2b-4a7e-9b0c-1f5d7e8a9b21",
+  "applicant_name": "Test Applicant A",
+  "loan_amount": 3000,
+  "interest_rate": 29.95,
+  "income": 4000,
+  "expenses": 3100,
+  "existing_debt": 1800,
+  "created_at": "2026-09-01T09:14:00+12:00"
+}

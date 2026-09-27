@@ -1,0 +1,15 @@
+[Unit]
+Description=TerePay Training Worker (Upstash Redis queue -> local trainer)
+After=network-online.target ollama.service
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=%h/credit-assessment-agent/console
+EnvironmentFile=-%h/credit-assessment-agent/.env
+Environment=PATH=%h/.nvm/versions/node/v24.21.0/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/.nvm/versions/node/v24.21.0/bin/node worker.js
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
