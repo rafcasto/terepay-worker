@@ -1,6 +1,7 @@
 // Run one website-style AI assessment job without Redis or Google Drive: the sample statement stands in for the Drive
 // documents. Exercises console/assess.js exactly as worker.js does (validation, folder guard, parse, LLM, scoring).
 //   node test/assess_local_test.js [flagged|clean] [--missing]     (--missing: prove an incomplete payload is refused)
+//   node test/assess_local_test.js flagged --model=terepay-analyst  (send payload.model, as the site does)
 const fs = require('fs'), path = require('path');
 const ASSESS = require('../console/assess.js');
 const which = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : 'flagged';
@@ -14,6 +15,7 @@ const payload = {
   documents: [{ driveId: 'doc-1', name: `statement-${which}.txt`, kind: 'statement', type: 'bank_statement' }],
   folderId: 'folder-1', rootFolderId: 'root-1',
 };
+const modelArg = process.argv.find(a => a.startsWith('--model=')); if (modelArg) payload.model = modelArg.slice('--model='.length);
 if (process.argv.includes('--missing')) { delete payload.application.income; payload.documents = []; }
 const ctx = {
   jobId: 'local-' + Date.now(), log: m => console.log(new Date().toISOString().slice(11, 19), m),
@@ -23,6 +25,6 @@ const ctx = {
 };
 process.env.GOOGLE_DRIVE_KYC_FOLDER_ID = process.env.GOOGLE_DRIVE_KYC_FOLDER_ID || 'root-1';
 ASSESS.runAssessment(payload, ctx).then(r => {
-  console.log('\nRESULT', JSON.stringify({ risk: r.risk_rating, rec: r.recommendation, tier: r.expense_risk_tier, behaviour: r.behaviour_score, confidence: r.confidence_score, escalation: r.escalation, parser: r.parser_mode, docs: r.documents, llm: r.llm, ms: r.processing_ms }, null, 2));
+  console.log('\nRESULT', JSON.stringify({ model: r.model, risk: r.risk_rating, rec: r.recommendation, tier: r.expense_risk_tier, behaviour: r.behaviour_score, confidence: r.confidence_score, escalation: r.escalation, parser: r.parser_mode, docs: r.documents, llm: r.llm, ms: r.processing_ms }, null, 2));
   console.log('\nANALYST NOTE:', r.analyst_note); console.log('\nFACTORS:', r.factors.length, '| EVIDENCE:', r.evidence.length, '| audit:', r.audit_dir);
 }).catch(e => { console.error('FAILED:', e.message, e.missing ? JSON.stringify(e.missing) : ''); process.exit(1); });

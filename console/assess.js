@@ -18,7 +18,8 @@ const { scoreAssessment } = require(path.join(C.ROOT, 'n8n/scoring.js'));
 const FRAMEWORK_VERSION = '2.2';
 const FOLDER = 'application/vnd.google-apps.folder';
 const BACKEND = (process.env.LLM_BACKEND || 'ollama').toLowerCase();
-const MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b';
+const MODEL = process.env.OLLAMA_MODEL || 'llama3.2:3b';   // default; a job may choose its own with payload.model
+const MODEL_RE = /^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,79}(:[a-zA-Z0-9][a-zA-Z0-9._-]{0,39})?$/;
 const OLLAMA = process.env.OLLAMA_API_URL || 'http://localhost:11434';
 const OPENAI_URL = process.env.LLM_API_URL || 'http://localhost:8080';
 const NUM_CTX = Number(process.env.OLLAMA_NUM_CTX || 6144);
@@ -53,6 +54,9 @@ function validatePayload(payload) {
     if (!docs.some(d => d && d.kind === 'statement')) missing.push('documents: at least one bank statement');
   }
   if (missing.length) throw Object.assign(new Error('Missing required input(s): ' + missing.join(', ')), { missing });
+  // Optional: the model the site administrator chose. Absent -> OLLAMA_MODEL. Present -> must be a valid model name.
+  if (payload.model !== undefined && payload.model !== null && (typeof payload.model !== 'string' || !MODEL_RE.test(payload.model)))
+    throw Object.assign(new Error('Invalid model name in payload: ' + String(JSON.stringify(payload.model)).slice(0, 100)), { invalid: ['model'] });
   return payload;
 }
 
@@ -66,15 +70,38 @@ function postJson(url, body, timeoutMs) {
   });
 }
 
+function getJson(url, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url); const lib = u.protocol === 'https:' ? https : http;
+    const req = lib.get(u, { timeout: timeoutMs }, r => { let d = ''; r.on('data', c => d += c); r.on('end', () => { try { resolve(JSON.parse(d)); } catch (e) { reject(new Error('non-JSON response: ' + d.slice(0, 200))); } }); });
+    req.on('timeout', () => req.destroy(new Error(`timed out after ${Math.round(timeoutMs / 1000)} s`)));
+    req.on('error', reject);
+  });
+}
+
+// Which model runs this job. No payload.model -> OLLAMA_MODEL, exactly as before. With payload.model, that model must be
+// installed: the job fails otherwise, it never falls back to another model. "x" and "x:latest" are the same model.
+const withTag = n => (n.includes(':') ? n : n + ':latest');
+async function resolveModel(requested) {
+  if (requested === undefined || requested === null) return MODEL;
+  if (BACKEND !== 'ollama') throw new Error(`Model ${requested} was requested, but the assessment machine runs LLM_BACKEND=${BACKEND} and cannot confirm which model is installed`);
+  let tags; try { tags = await getJson(`${OLLAMA}/api/tags`, 15000); } catch (e) { throw new Error(`Could not check whether model ${requested} is installed on the assessment machine: ${e.message}`); }
+  const installed = ((tags && tags.models) || []).map(m => m.name || m.model).filter(Boolean);
+  const hit = installed.find(n => withTag(n) === withTag(requested));
+  if (!hit) throw new Error(`Model ${requested} is not installed on the assessment machine`);
+  return hit;
+}
+
 // One call to the local model. Returns the parsed (repaired if truncated) JSON plus token / timing stats.
-async function callLlm(system, user, { mode, log, num_predict: np, repeat_penalty }) {
+async function callLlm(system, user, { mode, log, num_predict: np, repeat_penalty, model: chosen }) {
+  const model = chosen || MODEL;
   const messages = [{ role: 'system', content: system }, { role: 'user', content: user }];
   const num_predict = np || (mode === 'deterministic' ? 350 : 1500), num_ctx = mode === 'deterministic' ? NUM_CTX : FALLBACK_NUM_CTX;
   const url = BACKEND === 'openai' ? `${OPENAI_URL}/v1/chat/completions` : `${OLLAMA}/api/chat`;
   const body = BACKEND === 'openai'
-    ? { model: MODEL, messages, temperature: 0.1, max_tokens: num_predict, seed: 7, response_format: { type: 'json_object' }, stream: false }
-    : { model: MODEL, messages, stream: false, format: 'json', keep_alive: '30m', options: Object.assign({ temperature: 0.1, num_ctx, num_predict, seed: 7 }, repeat_penalty ? { repeat_penalty } : {}) };
-  log(`calling ${MODEL} (${BACKEND}, ${mode}, ~${Math.round((system.length + user.length) / 3.8)} prompt tokens)…`);
+    ? { model, messages, temperature: 0.1, max_tokens: num_predict, seed: 7, response_format: { type: 'json_object' }, stream: false }
+    : { model, messages, stream: false, format: 'json', keep_alive: '30m', options: Object.assign({ temperature: 0.1, num_ctx, num_predict, seed: 7 }, repeat_penalty ? { repeat_penalty } : {}) };
+  log(`calling ${model} (${BACKEND}, ${mode}, ~${Math.round((system.length + user.length) / 3.8)} prompt tokens)…`);
   const t0 = Date.now();
   const resp0 = await postJson(url, body, LLM_TIMEOUT_MS);
   if (resp0.error) throw new Error('LLM error: ' + (typeof resp0.error === 'string' ? resp0.error : JSON.stringify(resp0.error)));
@@ -96,6 +123,8 @@ async function runAssessment(payloadIn, ctx) {
   const dir = path.join(OUT, safe(app.id), safe(jobId || Date.now()));
   fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'payload.json'), JSON.stringify(payload, null, 2));
+  const model = await resolveModel(payload.model);
+  if (payload.model) log(`model chosen by the site: ${payload.model} (installed as ${model})`);
 
   // ---- documents: only from the application's own folder, which must sit in the configured root ----
   const folder = await driveMeta(payload.folderId);
@@ -129,7 +158,7 @@ async function runAssessment(payloadIn, ctx) {
   if (a.mode === 'deterministic') {
     const system = fs.readFileSync(path.join(C.ROOT, 'prompts/credit-assessment-judgement.md'), 'utf8');
     const user = 'VERIFIED METRICS AND STATEMENT LINES\n' + a.brief + '\n\nMake the judgement calls and write the narrative. Return ONLY the minified JSON object.';
-    const r = await callLlm(system, user, { mode: 'deterministic', log });
+    const r = await callLlm(system, user, { mode: 'deterministic', log, model });
     J = r.value; llm = r.info; fs.writeFileSync(path.join(dir, 'llm-raw.json'), r.raw);
     // Small models occasionally loop on a list until the token cap and never reach the note. The judgements are
     // already in hand (and gated), so ask once more for the narrative alone, with a repeat penalty. Never affects
@@ -138,7 +167,7 @@ async function runAssessment(payloadIn, ctx) {
       log('analyst note missing (model output truncated) — asking once more for the note only…');
       const noteUser = user + '\n\nThe judgement calls are done. Return ONLY {"analyst_note":"..."} — a 40-80 word plain-English note for the file that explains the rules-engine findings. No lists, no other keys.';
       try {
-        const r2 = await callLlm(system, noteUser, { mode: 'deterministic', log, num_predict: 160, repeat_penalty: 1.3 });
+        const r2 = await callLlm(system, noteUser, { mode: 'deterministic', log, model, num_predict: 160, repeat_penalty: 1.3 });
         fs.writeFileSync(path.join(dir, 'llm-raw-note.json'), r2.raw);
         const note = cleanNote(typeof r2.value.analyst_note === 'string' ? r2.value.analyst_note : (typeof r2.value.reasoning === 'string' ? r2.value.reasoning : ''));
         if (note) J.analyst_note = note;
@@ -152,7 +181,7 @@ async function runAssessment(payloadIn, ctx) {
     const rawText = docs.map(d => `\n\n===== DOCUMENT: ${d.original} =====\n${read(d)}`).join('').slice(0, MAX_DOC_CHARS);
     const money = v => blank(v) ? 'not provided' : `$${Number(v).toLocaleString('en-NZ')}`;
     const user = `APPLICATION DATA\n- Application ID: ${app.id}\n- Applicant: ${app.applicant_name}\n- Requested amount: ${money(app.loan_amount)}\n- Interest rate: ${app.interest_rate}% p.a.\n- Declared monthly income: ${money(app.income)}\n- Declared monthly expenses: ${money(app.expenses)}\n- Existing debt: ${money(app.existing_debt)}\n- Stated purpose: ${app.loan_purpose}\n\nSUPPORTING DOCUMENTS (extracted text)${rawText}\n\nScreen the documents against the framework. Count, don't estimate. Return ONLY the JSON object described in Part C.`;
-    const r = await callLlm(system, user, { mode: 'fallback', log });
+    const r = await callLlm(system, user, { mode: 'fallback', log, model });
     J = r.value; llm = r.info; fs.writeFileSync(path.join(dir, 'llm-raw.json'), r.raw);
     obs = J; if (!obs.reasoning) obs.reasoning = cleanNote(J.analyst_note || '');
   } else {
@@ -176,7 +205,7 @@ async function runAssessment(payloadIn, ctx) {
       : null,
     provisional: { risk_rating: a.findings.risk_rating, recommendation: a.findings.recommendation, expense_risk_tier: a.findings.expense_risk_tier },
     rejected_behaviour_ticks: obs.rejected_behaviour_ticks || [],
-    model: MODEL, backend: BACKEND, framework_version: FRAMEWORK_VERSION, llm,
+    model, backend: BACKEND, framework_version: FRAMEWORK_VERSION, llm,
     processing_ms: Date.now() - t0, completed_at: new Date().toISOString(), audit_dir: path.relative(C.ROOT, dir),
   };
   fs.writeFileSync(path.join(dir, 'result.json'), JSON.stringify(result, null, 2));
@@ -184,4 +213,4 @@ async function runAssessment(payloadIn, ctx) {
   return result;
 }
 
-module.exports = { runAssessment, validatePayload, callLlm, MODEL, BACKEND, FRAMEWORK_VERSION };
+module.exports = { runAssessment, validatePayload, resolveModel, callLlm, MODEL, MODEL_RE, BACKEND, FRAMEWORK_VERSION };
