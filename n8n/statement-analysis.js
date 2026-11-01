@@ -49,7 +49,7 @@ const TRAILING_MONEY = new RegExp(`(?:\\s+(?:${MONEY_TOKEN.source}))+\\s*$`);
 const MONTHS = { jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5, jul: 6, aug: 7, sep: 8, sept: 8, oct: 9, nov: 10, dec: 11 };
 
 function parseDate(s, hintYear) {
-  s = s.trim();
+  s = String(s == null ? '' : s).trim(); if (!s) return null;
   let m;
   if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/))) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
   if ((m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/))) { let y = +m[3]; if (y < 100) y += 2000; return new Date(Date.UTC(y, +m[2] - 1, +m[1])); }   // NZ: day first
@@ -388,7 +388,7 @@ function parsePayslip(text) {
     let m;
     if (out.pay_date === null && (m = l.match(PS.payDate))) out.pay_date = d(m[3]);
     if (out.period_start === null && (m = l.match(PS.period))) { out.period_start = d(m[3]); out.period_end = d(m[5]); }
-    if (out.period_end === null && (m = l.match(PS.periodEnd))) out.period_end = d(m[4]);
+    if (out.period_end === null && (m = l.match(PS.periodEnd))) out.period_end = d(m[5]);
     if (out.frequency === null && (m = l.match(PS.freq))) out.frequency = m[1].toLowerCase().replace(/-/g, '').replace('biweekly', 'fortnightly').replace('fourweekly', 'fourweekly');
     if (out.employer === null && (m = l.match(PS.employer))) out.employer = m[3].replace(/\s{2,}.*$/, '').trim();
     if (out.hours === null && (m = l.match(PS.hours)) && !PS.ytd.test(l)) out.hours = parseFloat(m[3]);
